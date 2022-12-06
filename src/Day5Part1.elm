@@ -17,7 +17,14 @@ main =
 
 type alias CratePlan =
     { startingPoint : CrateState
-    , steps : String
+    , steps : List SingleStep
+    }
+
+
+type alias Step =
+    { fromStack : Int
+    , toStack : Int
+    , n : Int
     }
 
 
@@ -28,11 +35,11 @@ type alias CrateState =
 toCratePlan : String -> Maybe CratePlan
 toCratePlan string =
     case String.split "\n\n" string of
-        startingPoint :: steps :: [] ->
+        startingPoint :: stepString :: [] ->
             Maybe.map
                 (\crateState ->
                     { startingPoint = crateState
-                    , steps = steps
+                    , steps = toSteps stepString
                     }
                 )
                 (toCrateState startingPoint)
@@ -82,6 +89,41 @@ toCrateRows chars =
 
         _ ->
             []
+
+
+toSteps : String -> List SingleStep
+toSteps string =
+    string
+        |> String.lines
+        |> List.filterMap toStep
+        |> List.concatMap stepToSingleStep
+
+
+toStep : String -> Maybe Step
+toStep string =
+    case String.split " " string of
+        "move" :: nString :: "from" :: fromString :: "to" :: toString :: [] ->
+            Maybe.map3 Step
+                (String.toInt fromString)
+                (String.toInt toString)
+                (String.toInt nString)
+
+        _ ->
+            Nothing
+
+
+type alias SingleStep =
+    { fromStack : Int
+    , toStack : Int
+    }
+
+
+stepToSingleStep : Step -> List SingleStep
+stepToSingleStep step =
+    List.repeat step.n
+        { fromStack = step.fromStack
+        , toStack = step.toStack
+        }
 
 
 puzzleInput : String
