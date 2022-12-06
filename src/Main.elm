@@ -1,7 +1,10 @@
 module Main exposing (main)
 
+import Day3Part1
+import Day3Part2
+import Day5Part1
 import Html exposing (..)
 
 
 main =
-    text "Advent of code 2022"
+    Day5Part1.main
