@@ -6,8 +6,9 @@ import Day5Part1
 import Day5Part2
 import Day6Part1
 import Day6Part2
+import Day7Part1
 import Html exposing (..)
 
 
 main =
-    Day6Part2.main
+    Day7Part1.main
