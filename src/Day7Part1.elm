@@ -14,6 +14,9 @@ main =
         |> String.lines
         |> List.filterMap toLine
         |> linesToFileStructure
+        |> toDirectorySizes
+        |> List.filter (\size -> size <= 100000)
+        |> List.sum
         |> Debug.toString
         |> text
 
@@ -65,11 +68,12 @@ type alias TraversingState =
     }
 
 
+linesToFileStructure : List Line -> FileStructure
 linesToFileStructure lines =
     let
         helper : Line -> TraversingState -> TraversingState
         helper line traversingState =
-            (case line of
+            case line of
                 CdCommand dirname ->
                     { traversingState
                         | reversedPath =
@@ -100,14 +104,13 @@ linesToFileStructure lines =
 
                 DirectoryListing string ->
                     traversingState
-            )
-                |> Debug.log "Test"
     in
     lines
         |> List.foldl helper
             { reversedPath = []
             , filesystem = Dir Dict.empty
             }
+        |> .filesystem
 
 
 addFileToNestedDirectory : String -> Int -> FileStructure -> List String -> FileStructure
@@ -148,6 +151,43 @@ addFileToDirectory filename size files =
     files
         |> Dict.insert filename (File size)
         |> Dir
+
+
+toDirectorySizes : FileStructure -> List Int
+toDirectorySizes fileStructure =
+    case fileStructure of
+        Dir files ->
+            let
+                totalSize : Int
+                totalSize =
+                    getSizeOfDirectoryContent files
+
+                subFolderSizes : List Int
+                subFolderSizes =
+                    files
+                        |> Dict.values
+                        |> List.concatMap toDirectorySizes
+            in
+            totalSize :: subFolderSizes
+
+        _ ->
+            []
+
+
+getSizeOfDirectoryContent : Dict String FileStructure -> Int
+getSizeOfDirectoryContent files =
+    files
+        |> Dict.map
+            (\key fileStructure ->
+                case fileStructure of
+                    Dir subFiles ->
+                        getSizeOfDirectoryContent subFiles
+
+                    File size ->
+                        size
+            )
+        |> Dict.values
+        |> List.sum
 
 
 puzzleInput =
