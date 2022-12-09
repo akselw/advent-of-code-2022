@@ -2,6 +2,7 @@ module Day7Part1 exposing (main)
 
 import Array exposing (Array)
 import Browser
+import Dict exposing (Dict)
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import List.Extra
@@ -54,8 +55,8 @@ toLine string =
 
 
 type FileStructure
-    = Dir String (List FileStructure)
-    | File String Int
+    = Dir (Dict String FileStructure)
+    | File Int
 
 
 type alias TraversingState =
@@ -105,7 +106,7 @@ linesToFileStructure lines =
     lines
         |> List.foldl helper
             { reversedPath = []
-            , filesystem = Dir "/" []
+            , filesystem = Dir Dict.empty
             }
 
 
@@ -113,39 +114,40 @@ addFileToNestedDirectory : String -> Int -> FileStructure -> List String -> File
 addFileToNestedDirectory filename size filesystem path =
     case path of
         [] ->
-            addFileToDirectory filename size filesystem
+            case filesystem of
+                Dir files ->
+                    addFileToDirectory filename size files
+
+                File s ->
+                    File s
 
         currentDirName :: rest ->
             case filesystem of
-                Dir dirname files ->
+                Dir files ->
                     files
-                        |> List.map
-                            (\f ->
-                                case f of
-                                    Dir d _ ->
-                                        if d == currentDirName then
-                                            addFileToNestedDirectory filename size f rest
+                        |> Dict.update currentDirName
+                            (\maybeF ->
+                                case maybeF of
+                                    Just (Dir subFiles) ->
+                                        Just (addFileToNestedDirectory filename size (Dir subFiles) rest)
 
-                                        else
-                                            f
+                                    Nothing ->
+                                        Just (addFileToNestedDirectory filename size (Dir Dict.empty) rest)
 
-                                    _ ->
-                                        f
+                                    Just file ->
+                                        Just file
                             )
-                        |> Dir dirname
+                        |> Dir
 
-                File currentFilename filesize ->
-                    File currentFilename filesize
+                File filesize ->
+                    File filesize
 
 
-addFileToDirectory : String -> Int -> FileStructure -> FileStructure
-addFileToDirectory filename size filesystem =
-    case filesystem of
-        Dir dirname files ->
-            Dir dirname (File filename size :: files)
-
-        File _ _ ->
-            filesystem
+addFileToDirectory : String -> Int -> Dict String FileStructure -> FileStructure
+addFileToDirectory filename size files =
+    files
+        |> Dict.insert filename (File size)
+        |> Dir
 
 
 puzzleInput =
