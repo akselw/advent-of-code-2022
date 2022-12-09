@@ -58,34 +58,32 @@ numberOfVisibleTrees treeGrid =
         |> List.Extra.count identity
 
 
-visibleFromLeft : Int -> Int -> Int -> TreeGrid -> Bool
-visibleFromLeft rowIndex columnIndex height treeGrid =
+findTreesToTheLeft : Int -> Int -> TreeGrid -> List Int
+findTreesToTheLeft rowIndex columnIndex treeGrid =
     treeGrid
         |> Dict.get rowIndex
         |> Maybe.map
             (\rowDict ->
                 List.range 0 (columnIndex - 1)
                     |> List.filterMap (\i -> Dict.get i rowDict)
-                    |> List.all (\h -> h < height)
             )
-        |> Maybe.withDefault True
+        |> Maybe.withDefault []
 
 
-visibleFromRight : Int -> Int -> Int -> TreeGrid -> Bool
-visibleFromRight rowIndex columnIndex height treeGrid =
+findTreesToTheRight : Int -> Int -> TreeGrid -> List Int
+findTreesToTheRight rowIndex columnIndex treeGrid =
     treeGrid
         |> Dict.get rowIndex
         |> Maybe.map
             (\rowDict ->
                 List.range (columnIndex + 1) (Dict.size rowDict - 1)
                     |> List.filterMap (\i -> Dict.get i rowDict)
-                    |> List.all (\h -> h < height)
             )
-        |> Maybe.withDefault True
+        |> Maybe.withDefault []
 
 
-visibleFromAbove : Int -> Int -> Int -> TreeGrid -> Bool
-visibleFromAbove rowIndex columnIndex height treeGrid =
+findTreesAbove : Int -> Int -> TreeGrid -> List Int
+findTreesAbove rowIndex columnIndex treeGrid =
     treeGrid
         |> Dict.filter (\key _ -> key < rowIndex)
         |> Dict.map
@@ -94,11 +92,10 @@ visibleFromAbove rowIndex columnIndex height treeGrid =
             )
         |> Dict.values
         |> List.concatMap Dict.values
-        |> List.all (\h -> h < height)
 
 
-visibleFromBelow : Int -> Int -> Int -> TreeGrid -> Bool
-visibleFromBelow rowIndex columnIndex height treeGrid =
+findTreesBelow : Int -> Int -> TreeGrid -> List Int
+findTreesBelow rowIndex columnIndex treeGrid =
     treeGrid
         |> Dict.filter (\key _ -> key > rowIndex)
         |> Dict.map
@@ -107,6 +104,33 @@ visibleFromBelow rowIndex columnIndex height treeGrid =
             )
         |> Dict.values
         |> List.concatMap Dict.values
+
+
+visibleFromLeft : Int -> Int -> Int -> TreeGrid -> Bool
+visibleFromLeft rowIndex columnIndex height treeGrid =
+    treeGrid
+        |> findTreesToTheLeft rowIndex columnIndex
+        |> List.all (\h -> h < height)
+
+
+visibleFromRight : Int -> Int -> Int -> TreeGrid -> Bool
+visibleFromRight rowIndex columnIndex height treeGrid =
+    treeGrid
+        |> findTreesToTheRight rowIndex columnIndex
+        |> List.all (\h -> h < height)
+
+
+visibleFromAbove : Int -> Int -> Int -> TreeGrid -> Bool
+visibleFromAbove rowIndex columnIndex height treeGrid =
+    treeGrid
+        |> findTreesAbove rowIndex columnIndex
+        |> List.all (\h -> h < height)
+
+
+visibleFromBelow : Int -> Int -> Int -> TreeGrid -> Bool
+visibleFromBelow rowIndex columnIndex height treeGrid =
+    treeGrid
+        |> findTreesBelow rowIndex columnIndex
         |> List.all (\h -> h < height)
 
 
