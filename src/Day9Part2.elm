@@ -58,6 +58,10 @@ parseDirection string =
             Nothing
 
 
+
+--performSteps : List Command -> ??
+
+
 type alias Coordinate =
     { x : Int
     , y : Int
@@ -204,7 +208,10 @@ executeCommand command initial =
         |> List.foldl (\_ b -> step b) { state = initial.state, history = initial.history }
 
 
-countTailPositions : StateAndHistory -> Int
+
+--countTailPositions : StateAndHistory -> Int
+
+
 countTailPositions { history } =
     history
         |> List.map (\coordinate -> ( coordinate.x, coordinate.y ))
