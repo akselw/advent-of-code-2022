@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Day10Part1
 import Day3Part1
 import Day3Part2
 import Day5Part1
@@ -16,4 +17,4 @@ import Html exposing (..)
 
 
 main =
-    Day9Part2.main
+    Day10Part1.main
