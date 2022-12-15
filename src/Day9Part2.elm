@@ -1,9 +1,9 @@
-module Day9Part1 exposing (main)
+module Day9Part2 exposing (main)
 
 import Array exposing (Array)
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, p, text)
 import Html.Events exposing (onClick)
 import List.Extra
 import Set
@@ -17,6 +17,15 @@ main =
         |> countTailPositions
         |> Debug.toString
         |> text
+
+
+
+--|> .history
+--|> List.reverse
+--|> Debug.toString
+--|> String.split "},{"
+--|> List.map (text >> List.singleton >> p [])
+--|> div []
 
 
 type alias Command =
@@ -58,10 +67,6 @@ parseDirection string =
             Nothing
 
 
-
---performSteps : List Command -> ??
-
-
 type alias Coordinate =
     { x : Int
     , y : Int
@@ -70,7 +75,8 @@ type alias Coordinate =
 
 type alias State =
     { head : Coordinate
-    , tail : Coordinate
+    , firstTail : Coordinate
+    , tail : List Coordinate
     }
 
 
@@ -114,72 +120,224 @@ coordinatesAreTouching head tail =
         False
 
 
-moveTail : Direction -> Coordinate -> Coordinate -> Coordinate
-moveTail headDirection head tail =
+findTailMoveDirection : Direction -> Coordinate -> Coordinate -> TailMoveDirection
+findTailMoveDirection headDirection head tail =
     if coordinatesAreTouching head tail then
-        tail
+        NoMovement
 
     else if head.x == tail.x then
-        { x = tail.x
-        , y =
-            tail.y
-                + (if head.y > tail.y then
-                    1
+        if head.y > tail.y then
+            North
 
-                   else
-                    -1
-                  )
-        }
+        else
+            South
 
     else if head.y == tail.y then
-        { y = tail.y
-        , x =
-            tail.x
-                + (if head.x > tail.x then
-                    1
+        if head.x > tail.x then
+            East
 
-                   else
-                    -1
-                  )
-        }
+        else
+            West
 
     else
-        moveAdjescentToHead headDirection head tail
+        moveNonAdjescentToHead headDirection head tail
 
 
-moveAdjescentToHead : Direction -> Coordinate -> Coordinate -> Coordinate
-moveAdjescentToHead headDirection head tail =
+moveNonAdjescentToHead : Direction -> Coordinate -> Coordinate -> TailMoveDirection
+moveNonAdjescentToHead headDirection head oldTail =
     case headDirection of
         Up ->
-            { x = head.x
-            , y = head.y - 1
-            }
+            if head.x > oldTail.x then
+                NorthEast
+
+            else
+                NorthWest
 
         Down ->
-            { x = head.x
-            , y = head.y + 1
-            }
+            if head.x > oldTail.x then
+                SouthEast
+
+            else
+                SouthWest
 
         Right ->
-            { y = head.y
-            , x = head.x - 1
-            }
+            if head.y > oldTail.y then
+                NorthEast
+
+            else
+                SouthEast
 
         Left ->
-            { y = head.y
-            , x = head.x + 1
-            }
+            if head.y > oldTail.y then
+                NorthWest
+
+            else
+                SouthWest
+
+
+updateTail : TailMoveDirection -> Coordinate -> List Coordinate -> List Coordinate
+updateTail previousTailMoveDirection theTailBeforeThisOne tail =
+    case tail of
+        [] ->
+            []
+
+        currentTail :: rest ->
+            let
+                currentTailMoveDirection : TailMoveDirection
+                currentTailMoveDirection =
+                    findNextTailMoveDirection previousTailMoveDirection theTailBeforeThisOne currentTail
+
+                a : Coordinate
+                a =
+                    tailMoveDirectionToCoordinates currentTailMoveDirection currentTail
+            in
+            a :: updateTail currentTailMoveDirection a rest
+
+
+findNextTailMoveDirection : TailMoveDirection -> Coordinate -> Coordinate -> TailMoveDirection
+findNextTailMoveDirection previousTailMoveDirection theTailBeforeThisOne currentTail =
+    if coordinatesAreTouching theTailBeforeThisOne currentTail then
+        NoMovement
+
+    else if theTailBeforeThisOne.x == currentTail.x then
+        if theTailBeforeThisOne.y > currentTail.y then
+            North
+
+        else
+            South
+
+    else if theTailBeforeThisOne.y == currentTail.y then
+        if theTailBeforeThisOne.x > currentTail.x then
+            East
+
+        else
+            West
+
+    else
+        moveNonAdjescentToTail previousTailMoveDirection theTailBeforeThisOne currentTail
+
+
+moveNonAdjescentToTail : TailMoveDirection -> Coordinate -> Coordinate -> TailMoveDirection
+moveNonAdjescentToTail previousTailMoveDirection theTailBeforeThisOne currentTail =
+    case previousTailMoveDirection of
+        North ->
+            if theTailBeforeThisOne.x > currentTail.x then
+                NorthEast
+
+            else
+                NorthWest
+
+        NorthEast ->
+            NorthEast
+
+        East ->
+            if theTailBeforeThisOne.y > currentTail.y then
+                NorthEast
+
+            else
+                SouthEast
+
+        SouthEast ->
+            SouthEast
+
+        South ->
+            if theTailBeforeThisOne.x > currentTail.x then
+                SouthEast
+
+            else
+                SouthWest
+
+        SouthWest ->
+            SouthWest
+
+        West ->
+            if theTailBeforeThisOne.y > currentTail.y then
+                NorthWest
+
+            else
+                SouthWest
+
+        NorthWest ->
+            NorthWest
+
+        NoMovement ->
+            NoMovement
+
+
+
+--case headDirection of
+--     Up ->
+--         ( { x = head.x
+--           , y = head.y - 1
+--           }
+--         , if oldTail.x < head.x then
+--             NorthEast
+--
+--           else
+--             NorthWest
+--         )
+--
+--     Down ->
+--         ( { x = head.x
+--           , y = head.y + 1
+--           }
+--         , if oldTail.x < head.x then
+--             SouthEast
+--
+--           else
+--             SouthWest
+--         )
+--
+--     Right ->
+--         ( { y = head.y
+--           , x = head.x - 1
+--           }
+--         , if oldTail.y < head.y then
+--             NorthWest
+--
+--           else
+--             SouthWest
+--         )
+--
+--     Left ->
+--         ( { y = head.y
+--           , x = head.x + 1
+--           }
+--         , if oldTail.y < head.y then
+--             NorthEast
+--
+--           else
+--             SouthEast
+--         )
+
+
+type TailMoveDirection
+    = North
+    | NorthEast
+    | East
+    | SouthEast
+    | South
+    | SouthWest
+    | West
+    | NorthWest
+    | NoMovement
+
+
+initialStateAndHistory : StateAndHistory
+initialStateAndHistory =
+    { state =
+        { head = { x = 0, y = 0 }
+        , firstTail = { x = 0, y = 0 }
+        , tail = List.repeat 8 { x = 0, y = 0 }
+        }
+    , history = [ { x = 0, y = 0 } ]
+    }
 
 
 performSteps : List Command -> StateAndHistory
 performSteps commands =
     List.foldl executeCommand
-        { state =
-            { head = { x = 0, y = 0 }
-            , tail = { x = 0, y = 0 }
-            }
-        , history = [ { x = 0, y = 0 } ]
-        }
+        initialStateAndHistory
         commands
 
 
@@ -193,25 +351,86 @@ executeCommand command initial =
                 headLocation =
                     moveHead command.direction state.head
 
-                tailLocation : Coordinate
-                tailLocation =
-                    moveTail command.direction headLocation state.tail
+                tailMoveDirection : TailMoveDirection
+                tailMoveDirection =
+                    findTailMoveDirection command.direction headLocation state.firstTail
+
+                firstTailLocation : Coordinate
+                firstTailLocation =
+                    tailMoveDirectionToCoordinates tailMoveDirection state.firstTail
+
+                newTail : List Coordinate
+                newTail =
+                    updateTail tailMoveDirection firstTailLocation state.tail
             in
             { state =
                 { head = headLocation
-                , tail = tailLocation
+                , firstTail = firstTailLocation
+                , tail = newTail
                 }
-            , history = tailLocation :: history
+            , history =
+                case List.Extra.last newTail of
+                    Just last ->
+                        last :: history
+
+                    _ ->
+                        history
             }
     in
     List.range 1 command.number
         |> List.foldl (\_ b -> step b) { state = initial.state, history = initial.history }
 
 
+tailMoveDirectionToCoordinates : TailMoveDirection -> Coordinate -> Coordinate
+tailMoveDirectionToCoordinates tailMoveDirection { x, y } =
+    case tailMoveDirection of
+        North ->
+            { x = x
+            , y = y + 1
+            }
 
---countTailPositions : StateAndHistory -> Int
+        NorthEast ->
+            { x = x + 1
+            , y = y + 1
+            }
+
+        East ->
+            { x = x + 1
+            , y = y
+            }
+
+        SouthEast ->
+            { x = x + 1
+            , y = y - 1
+            }
+
+        South ->
+            { x = x
+            , y = y - 1
+            }
+
+        SouthWest ->
+            { x = x - 1
+            , y = y - 1
+            }
+
+        West ->
+            { x = x - 1
+            , y = y
+            }
+
+        NorthWest ->
+            { x = x - 1
+            , y = y + 1
+            }
+
+        NoMovement ->
+            { x = x
+            , y = y
+            }
 
 
+countTailPositions : StateAndHistory -> Int
 countTailPositions { history } =
     history
         |> List.map (\coordinate -> ( coordinate.x, coordinate.y ))
@@ -221,12 +440,12 @@ countTailPositions { history } =
 
 puzzleInput =
     String.trim """
-R 4
-U 4
-L 3
-D 1
-R 4
-D 1
-L 5
-R 2
+R 5
+U 8
+L 8
+D 3
+R 17
+D 10
+L 25
+U 20
 """
