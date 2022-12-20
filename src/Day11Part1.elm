@@ -15,12 +15,19 @@ main =
         |> List.filterMap parseMonkeyInfo
         |> toMonkeyDict
         |> performRoundnNumberOfRounds 20
+        |> Dict.values
+        |> List.map .itemsInspected
+        |> List.sort
+        |> List.reverse
+        |> List.take 2
+        |> List.product
         |> Debug.toString
         |> text
 
 
 type alias MonkeyInfo =
     { items : List Int
+    , itemsInspected : Int
     , operation : Operation
     , testDivisibleBy : Int
     , throwToMonkeyIfTrue : Int
@@ -40,7 +47,7 @@ parseMonkeyInfo string =
     case String.lines string of
         monkeyNumber :: startingItemsString :: operationString :: testString :: ifTrueString :: ifFalseString :: [] ->
             Maybe.map4
-                (MonkeyInfo (parseStartingItems startingItemsString))
+                (MonkeyInfo (parseStartingItems startingItemsString) 0)
                 (parseOperation operationString)
                 (parseTestDivisibleBy testString)
                 (parseThrowToMonkeyIfTrue ifTrueString)
@@ -211,7 +218,13 @@ moveItems moveItemToMonkey monkeyDict =
 emptyMonkeyItems : Maybe MonkeyInfo -> Maybe MonkeyInfo
 emptyMonkeyItems maybeMonkeyInfo =
     maybeMonkeyInfo
-        |> Maybe.map (\monkeyInfo -> { monkeyInfo | items = [] })
+        |> Maybe.map
+            (\monkeyInfo ->
+                { monkeyInfo
+                    | itemsInspected = monkeyInfo.itemsInspected + List.length monkeyInfo.items
+                    , items = []
+                }
+            )
 
 
 puzzleInput =
