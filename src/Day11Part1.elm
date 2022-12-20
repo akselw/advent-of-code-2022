@@ -139,6 +139,18 @@ performRound monkeyDict =
         |> Dict.keys
         |> List.sort
         |> List.foldl performMonkeyTurn monkeyDict
+        |> logRound
+
+
+logRound : Dict Int MonkeyInfo -> Dict Int MonkeyInfo
+logRound monkeyDict =
+    let
+        _ =
+            monkeyDict
+                |> Dict.map (\_ monkeyInfo -> monkeyInfo.items)
+                |> Debug.log "t"
+    in
+    monkeyDict
 
 
 type alias MoveItemToMonkey =
@@ -208,8 +220,13 @@ moveItems moveItemToMonkey monkeyDict =
     let
         updateItem : Maybe MonkeyInfo -> Maybe MonkeyInfo
         updateItem maybeMonkeyInfo =
-            maybeMonkeyInfo
-                |> Maybe.map (\monkeyInfoToUpdate -> { monkeyInfoToUpdate | items = List.append monkeyInfoToUpdate.items [ moveItemToMonkey.item ] })
+            case maybeMonkeyInfo of
+                Just monkeyInfoToUpdate ->
+                    Just { monkeyInfoToUpdate | items = List.append monkeyInfoToUpdate.items [ moveItemToMonkey.item ] }
+
+                Nothing ->
+                    Nothing
+                        |> Debug.log ""
     in
     monkeyDict
         |> Dict.update moveItemToMonkey.toMonkey updateItem
@@ -217,14 +234,17 @@ moveItems moveItemToMonkey monkeyDict =
 
 emptyMonkeyItems : Maybe MonkeyInfo -> Maybe MonkeyInfo
 emptyMonkeyItems maybeMonkeyInfo =
-    maybeMonkeyInfo
-        |> Maybe.map
-            (\monkeyInfo ->
+    case maybeMonkeyInfo of
+        Just monkeyInfo ->
+            Just
                 { monkeyInfo
                     | itemsInspected = monkeyInfo.itemsInspected + List.length monkeyInfo.items
                     , items = []
                 }
-            )
+
+        Nothing ->
+            Nothing
+                |> Debug.log ""
 
 
 puzzleInput =
