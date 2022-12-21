@@ -14,14 +14,8 @@ main =
     puzzleInput
         |> parseGrid
         |> toGridInfo
-        --|> Maybe.map findPathsToEndPoint
-        --|> Maybe.withDefault Set.empty
-        --|> Set.toList
-        --|> List.length
-        --|> List.sortBy List.length
-        --|> List.head
-        --|> Maybe.map List.reverse
-        --|> Maybe.map List.length
+        |> Maybe.map calculateDistances
+        |> Maybe.andThen distanceOfEndpoint
         |> Debug.toString
         |> text
 
@@ -162,6 +156,115 @@ findEndPoint grid =
         |> Dict.toList
         |> List.Extra.find (\( _, char ) -> char == 'E')
         |> Maybe.map Tuple.first
+
+
+calculateDistances : GridInfo -> GridInfo
+calculateDistances gridInfo =
+    let
+        startingGrid : Grid
+        startingGrid =
+            Dict.update gridInfo.startingPoint (Maybe.map (setValue 0)) gridInfo.grid
+    in
+    { gridInfo | grid = dijkstrasAlgorithm startingGrid }
+
+
+dijkstrasAlgorithm : Grid -> Grid
+dijkstrasAlgorithm grid =
+    let
+        maybeCurrentPoint : Maybe ( Coordinate, GridPoint )
+        maybeCurrentPoint =
+            findNextActivePoint grid
+                |> Debug.log "maybeCurrentPoint"
+    in
+    case maybeCurrentPoint of
+        Just ( coords, currentPoint ) ->
+            case currentPoint.status of
+                Unfinished value ->
+                    let
+                        updateValue : Coordinate -> Grid -> Grid
+                        updateValue neighbourCoords dict =
+                            Dict.update neighbourCoords (Maybe.map (setValue (value + 1))) dict
+
+                        updatedGrid =
+                            List.foldl updateValue grid currentPoint.neighbours
+                                |> Dict.update coords (Maybe.map setFinished)
+                    in
+                    dijkstrasAlgorithm updatedGrid
+
+                _ ->
+                    grid
+
+        Nothing ->
+            grid
+
+
+findNextActivePoint : Grid -> Maybe ( Coordinate, GridPoint )
+findNextActivePoint grid =
+    let
+        minUnfinishedValue : Coordinate -> GridPoint -> Maybe ( Coordinate, GridPoint ) -> Maybe ( Coordinate, GridPoint )
+        minUnfinishedValue coords gridPoint maybeLowestSoFar =
+            let
+                lowestStatus : GridPointStatus
+                lowestStatus =
+                    maybeLowestSoFar
+                        |> Maybe.map Tuple.second
+                        |> Maybe.map .status
+                        |> Maybe.withDefault NotVisited
+            in
+            case ( lowestStatus, gridPoint.status ) of
+                ( Unfinished soFarValue, Unfinished thisValue ) ->
+                    if thisValue < soFarValue then
+                        Just ( coords, gridPoint )
+
+                    else
+                        maybeLowestSoFar
+
+                ( NotVisited, Unfinished v ) ->
+                    Just ( coords, gridPoint )
+
+                _ ->
+                    maybeLowestSoFar
+    in
+    Dict.foldl minUnfinishedValue Nothing grid
+
+
+setValue : Int -> GridPoint -> GridPoint
+setValue value gridPoint =
+    { gridPoint
+        | status =
+            case gridPoint.status of
+                Unfinished previousValue ->
+                    Unfinished (min previousValue value)
+
+                NotVisited ->
+                    Unfinished value
+
+                Visited _ ->
+                    gridPoint.status
+    }
+
+
+setFinished : GridPoint -> GridPoint
+setFinished gridPoint =
+    { gridPoint
+        | status =
+            case gridPoint.status of
+                Unfinished value ->
+                    Visited value
+
+                NotVisited ->
+                    NotVisited
+
+                Visited _ ->
+                    gridPoint.status
+    }
+
+
+distanceOfEndpoint : GridInfo -> Maybe GridPointStatus
+distanceOfEndpoint gridInfo =
+    gridInfo.grid
+        |> Dict.get gridInfo.endPoint
+        |> Maybe.map .status
 
 
 puzzleInput =
