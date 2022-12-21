@@ -6,6 +6,7 @@ import Dict exposing (Dict)
 import Html exposing (Html, button, div, p, text)
 import Html.Events exposing (onClick)
 import List.Extra
+import Maybe.Extra
 import Set exposing (Set)
 
 
@@ -13,14 +14,14 @@ main =
     puzzleInput
         |> parseGrid
         |> toGridInfo
-        |> Maybe.map findPathsToEndPoint
-        |> Maybe.withDefault Set.empty
-        |> Set.toList
+        --|> Maybe.map findPathsToEndPoint
+        --|> Maybe.withDefault Set.empty
+        --|> Set.toList
         --|> List.length
-        |> List.sortBy List.length
-        |> List.head
-        |> Maybe.map List.reverse
-        |> Maybe.map List.length
+        --|> List.sortBy List.length
+        --|> List.head
+        --|> Maybe.map List.reverse
+        --|> Maybe.map List.length
         |> Debug.toString
         |> text
 
@@ -30,7 +31,20 @@ type alias Coordinate =
 
 
 type alias Grid =
-    Dict Coordinate Char
+    Dict Coordinate GridPoint
+
+
+type GridPointStatus
+    = NotVisited
+    | Unfinished Int
+    | Visited Int
+
+
+type alias GridPoint =
+    { char : Char
+    , neighbours : List Coordinate
+    , status : GridPointStatus
+    }
 
 
 type alias GridInfo =
@@ -40,7 +54,7 @@ type alias GridInfo =
     }
 
 
-parseGrid : String -> Grid
+parseGrid : String -> Dict Coordinate Char
 parseGrid string =
     string
         |> String.lines
@@ -50,60 +64,63 @@ parseGrid string =
         |> Dict.fromList
 
 
-toGridInfo : Grid -> Maybe GridInfo
+toGridInfo : Dict Coordinate Char -> Maybe GridInfo
 toGridInfo grid =
-    Maybe.map2 (GridInfo grid)
+    Maybe.map2 (GridInfo (coordsToGrid grid))
         (findStartingPoint grid)
         (findEndPoint grid)
 
 
-findStartingPoint : Grid -> Maybe Coordinate
-findStartingPoint grid =
-    grid
-        |> Dict.toList
-        |> List.Extra.find (\( _, char ) -> char == 'S')
-        |> Maybe.map Tuple.first
-
-
-findEndPoint : Grid -> Maybe Coordinate
-findEndPoint grid =
-    grid
-        |> Dict.toList
-        |> List.Extra.find (\( _, char ) -> char == 'E')
-        |> Maybe.map Tuple.first
-
-
-
---findPathsToEndPoint : GridInfo -> a
-
-
-findPathsToEndPoint gridInfo =
-    findAllPaths gridInfo [] gridInfo.startingPoint 'a'
-
-
-findAllPaths : GridInfo -> List Coordinate -> Coordinate -> Char -> Set (List Coordinate)
-findAllPaths gridInfo currentPath currentCoords currentHeight =
+coordsToGrid : Dict Coordinate Char -> Grid
+coordsToGrid dict =
     let
-        newPath : List Coordinate
-        newPath =
-            currentCoords :: currentPath
+        charToGridPoint coords char =
+            { char = char
+            , status = NotVisited
+            , neighbours = findNeighbours dict coords char
+            }
     in
-    if isEndpoint currentHeight then
-        Set.singleton newPath
+    Dict.map charToGridPoint dict
+
+
+findNeighbours : Dict Coordinate Char -> Coordinate -> Char -> List Coordinate
+findNeighbours dict coords char =
+    [ coordsToTheRight coords
+        |> ifReachable dict char
+    , coordsBelow coords
+        |> ifReachable dict char
+    , coordsToTheLeft coords
+        |> ifReachable dict char
+    , coordsAbove coords
+        |> ifReachable dict char
+    ]
+        |> Maybe.Extra.values
+
+
+charToHeight : Char -> Int
+charToHeight char =
+    if char == 'S' then
+        Char.toCode 'a'
+
+    else if char == 'E' then
+        Char.toCode 'z'
 
     else
-        [ coordsToTheRight currentCoords
-        , coordsBelow currentCoords
-        , coordsToTheLeft currentCoords
-        , coordsAbove currentCoords
-        ]
-            |> List.map
-                (findAllPathsNotVisited
-                    gridInfo
-                    newPath
-                    currentHeight
-                )
-            |> mergeSets
+        Char.toCode char
+
+
+ifReachable : Dict Coordinate Char -> Char -> Coordinate -> Maybe Coordinate
+ifReachable dict originChar neighbourCoords =
+    case Dict.get neighbourCoords dict of
+        Just neighbourChar ->
+            if charToHeight neighbourChar <= (charToHeight originChar + 1) then
+                Just neighbourCoords
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
 
 
 isEndpoint : Char -> Bool
@@ -131,34 +148,20 @@ coordsBelow ( x, y ) =
     ( x, y + 1 )
 
 
-findAllPathsNotVisited : GridInfo -> List Coordinate -> Char -> Coordinate -> Set (List Coordinate)
-findAllPathsNotVisited gridInfo currentPath currentHeight nextCoordinate =
-    if not (List.member nextCoordinate currentPath) then
-        case Dict.get nextCoordinate gridInfo.grid of
-            Just 'E' ->
-                if currentHeight == 'z' || currentHeight == 'y' then
-                    findAllPaths gridInfo currentPath nextCoordinate 'E'
-
-                else
-                    Set.empty
-
-            Just nextHeight ->
-                if Char.toCode nextHeight <= (Char.toCode currentHeight + 1) then
-                    findAllPaths gridInfo currentPath nextCoordinate nextHeight
-
-                else
-                    Set.empty
-
-            Nothing ->
-                Set.empty
-
-    else
-        Set.empty
+findStartingPoint : Dict Coordinate Char -> Maybe Coordinate
+findStartingPoint grid =
+    grid
+        |> Dict.toList
+        |> List.Extra.find (\( _, char ) -> char == 'S')
+        |> Maybe.map Tuple.first
 
 
-mergeSets : List (Set comparable) -> Set comparable
-mergeSets sets =
-    List.foldl Set.union Set.empty sets
+findEndPoint : Dict Coordinate Char -> Maybe Coordinate
+findEndPoint grid =
+    grid
+        |> Dict.toList
+        |> List.Extra.find (\( _, char ) -> char == 'E')
+        |> Maybe.map Tuple.first
 
 
 puzzleInput =
